@@ -1,3 +1,4 @@
+# cita.py
 from db_connection import get_conn
 
 class Cita:
@@ -15,6 +16,16 @@ class Cita:
         conn = get_conn()
         try:
             cur = conn.cursor()
+            
+            # Validar que el veterinario no tenga otra cita a esa hora
+            cur.execute(
+                "SELECT id FROM citas WHERE idVeterinario = %s AND fecha = %s AND hora = %s AND estado != 'cancelada'",
+                (idVeterinario, fecha, hora)
+            )
+            if cur.fetchone():
+                raise ValueError("El veterinario ya tiene una cita agendada a esa hora")
+            
+            # Crear la cita
             cur.execute(
                 "INSERT INTO citas (idMascota, idVeterinario, fecha, hora, motivo, estado) VALUES (%s, %s, %s, %s, %s, %s)",
                 (idMascota, idVeterinario, fecha, hora, motivo, estado)
