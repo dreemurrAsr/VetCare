@@ -4,9 +4,9 @@ from tkinter import ttk, messagebox, simpledialog
 
 from usuario import Usuario, Dueno, Veterinario, hash_password
 
-current_user = None  # objeto Usuario autenticado
+current_user = None  
 
-# Código admin que se solicitará al crear cuentas admin
+
 CODIGO_ADMIN = "ADMIN2025"
 
 # --------------------------
@@ -19,34 +19,30 @@ def login_inicial():
     """
     global current_user
 
-    # Preguntar si el usuario ya tiene cuenta
     tiene = messagebox.askyesno("Bienvenido a VetCare", "¿Tienes una cuenta en el sistema?")
     if tiene is None:
         salir()
         return
 
     if not tiene:
-        # Permitir registro público
+        
         try:
             u = registrar_usuario_publico()
             if u:
-                # auto-login con el usuario creado
                 current_user = u
                 lbl_help.config(text=f"Usuario conectado: {current_user.nombre} ({current_user.role})")
                 ajustar_menu_por_rol()
-                # Si es dueño, mostrar sus mascotas
+                
                 if current_user.role == 'dueno':
                     mostrar_mis_mascotas()
                 else:
                     listar_usuarios()
                 return
             else:
-                # Si el usuario canceló el registro, volver a preguntar inicio de sesión
                 messagebox.showinfo("Info", "Registro cancelado. Se solicitará inicio de sesión.")
         except Exception as e:
             messagebox.showerror("Error", f"Error durante el registro:\n{e}")
 
-    # intentos iniciar sesión (3 intentos)
     for _ in range(3):
         correo = simpledialog.askstring("Inicio de sesión", "Correo electrónico:")
         if correo is None:
@@ -61,7 +57,7 @@ def login_inicial():
             current_user = usuario
             lbl_help.config(text=f"Usuario conectado: {current_user.nombre} ({current_user.role})")
             ajustar_menu_por_rol()
-            # Si es dueño, mostrar sus mascotas
+         
             if current_user.role == 'dueno':
                 mostrar_mis_mascotas()
             elif current_user.role == 'veterinario':
@@ -72,7 +68,7 @@ def login_inicial():
         else:
             retry = messagebox.askretrycancel("Error", "Credenciales incorrectas. ¿Deseas intentar de nuevo?")
             if not retry:
-                # dar opción para registrarse si no tiene cuenta
+                
                 want_reg = messagebox.askyesno("Registro", "¿Deseas registrarte ahora?")
                 if want_reg:
                     try:
@@ -105,7 +101,7 @@ def requiere_admin(func):
     return wrapper
 
 
-# Nueva función: registro público (sin requerir admin)
+
 def registrar_usuario_publico():
     """Permite registrar un usuario desde la pantalla de inicio (roles: dueno, veterinario, admin).
     Si se selecciona admin, se solicita un código adicional.
@@ -126,7 +122,7 @@ def registrar_usuario_publico():
         messagebox.showwarning("Rol inválido", "Rol inválido. Se usará 'dueno'.")
         role = 'dueno'
     
-    # Si es admin, solicitar código adicional
+    
     if role == 'admin':
         codigo = simpledialog.askstring("Código Admin", "Ingrese el código de administrador:", show='*')
         if codigo != CODIGO_ADMIN:
@@ -138,7 +134,7 @@ def registrar_usuario_publico():
         messagebox.showwarning("Contraseña requerida", "La contraseña es obligatoria.")
         return None
     
-    # Crear usuario según su rol
+    
     try:
         if role == 'dueno':
             direccion = simpledialog.askstring("Datos del dueño", "Dirección:")
@@ -148,7 +144,7 @@ def registrar_usuario_publico():
             especialidad = simpledialog.askstring("Datos del veterinario", "Especialidad:")
             anos = simpledialog.askinteger("Datos del veterinario", "Años de experiencia:", minvalue=0)
             u = Veterinario.crear(nombre.strip(), correo.strip(), pwd, especialidad, anos)
-        else:  # admin
+        else:  
             u = Usuario.crear(nombre.strip(), correo.strip(), pwd, 'admin')
         
         messagebox.showinfo("OK", f"Usuario registrado: {u.nombre} (role={u.role})")
@@ -158,7 +154,7 @@ def registrar_usuario_publico():
         return None
 
 
-# --- Registro / modificación / eliminación (admin) ---
+
 
 @requiere_admin
 def registrar_usuario():
@@ -172,7 +168,6 @@ def registrar_usuario():
     
     role = simpledialog.askstring("Registrar usuario", "Rol (dueno/veterinario/admin):", initialvalue="dueno")
     
-    # Si es admin, solicitar código adicional
     if role and role.strip().lower() == 'admin':
         codigo = simpledialog.askstring("Código Admin", "Ingrese el código de administrador:", show='*')
         if codigo != CODIGO_ADMIN:
@@ -282,13 +277,13 @@ def agendar_cita():
     from cita import Cita
     from mascota import Mascota
     
-    # Obtener mascotas del dueño
+
     mascotas = current_user.obtener_mascotas()
     if not mascotas:
         messagebox.showwarning("Sin mascotas", "Primero debes registrar una mascota.")
         return
     
-    # Mostrar lista de mascotas
+
     nombres_mascotas = [f"{m.id} - {m.nombre}" for m in mascotas]
     mascota_selec = simpledialog.askstring("Agendar cita", 
                                            f"Mascotas disponibles:\n" + "\n".join(nombres_mascotas) + 
@@ -302,7 +297,6 @@ def agendar_cita():
         messagebox.showerror("Error", "ID inválido.")
         return
     
-    # Listar veterinarios
     veterinarios = Veterinario.listar_veterinarios()
     if not veterinarios:
         messagebox.showwarning("Sin veterinarios", "No hay veterinarios disponibles.")
@@ -321,7 +315,7 @@ def agendar_cita():
         messagebox.showerror("Error", "ID inválido.")
         return
     
-    # Solicitar fecha y hora
+    
     fecha = simpledialog.askstring("Agendar cita", "Fecha (YYYY-MM-DD):")
     if not fecha:
         return
@@ -378,28 +372,25 @@ def completar_cita():
     
     from cita import Cita
     
-    # Solicitar ID de la cita
+    
     id_cita = simpledialog.askinteger("Completar cita", "Ingresa el ID de la cita:")
     if not id_cita:
         return
     
-    # Buscar la cita
+    
     cita = Cita.buscar_por_id(id_cita)
     if not cita:
         messagebox.showerror("Error", "Cita no encontrada.")
         return
     
-    # Verificar que la cita sea del veterinario actual
     if cita.idVeterinario != current_user.id:
         messagebox.showerror("Error", "Esta cita no está asignada a ti.")
         return
     
-    # Verificar que la cita esté en estado pendiente o confirmada
     if cita.estado not in ('pendiente', 'confirmada'):
         messagebox.showerror("Error", f"Esta cita ya está en estado: {cita.estado}")
         return
-    
-    # Solicitar diagnóstico y tratamiento
+
     diagnostico = simpledialog.askstring("Diagnóstico", "Ingresa el diagnóstico:")
     if not diagnostico:
         return
@@ -436,7 +427,6 @@ def ver_historial_mascota():
             messagebox.showerror("Error", "Mascota no encontrada.")
             return
         
-        # Verificar permisos
         if current_user.role == 'dueno' and mascota.idDueno != current_user.id:
             messagebox.showerror("Permisos", "No puedes ver el historial de esta mascota.")
             return
@@ -460,7 +450,7 @@ def ver_historial_mascota():
         messagebox.showerror("Error", f"Error al obtener historial:\n{e}")
 
 
-# --- Listados (admin y veterinario) ---
+
 
 def listar_usuarios():
     try:
@@ -514,7 +504,7 @@ def eliminar_mascota():
             messagebox.showerror("Error", "Mascota no encontrada.")
             return
         
-        # Verificar permisos
+        
         if current_user.role == 'dueno' and mascota.idDueno != current_user.id:
             messagebox.showerror("Permisos", "No puedes eliminar esta mascota.")
             return
@@ -558,7 +548,7 @@ def salir():
 def ajustar_menu_por_rol():
     """Habilita/deshabilita opciones del menú según el rol del usuario actual."""
     if current_user is None:
-        # deshabilitar todo por seguridad
+        
         for i in range(acciones_menu.index(tk.END) + 1):
             try:
                 acciones_menu.entryconfig(i, state="disabled")
@@ -567,7 +557,7 @@ def ajustar_menu_por_rol():
         return
 
     if current_user.role == 'admin':
-        # Admin: habilitar todo
+    
         acciones_menu.entryconfig("Registrar usuario", state="normal")
         acciones_menu.entryconfig("Eliminar usuario", state="normal")
         acciones_menu.entryconfig("Listar usuarios", state="normal")
@@ -581,7 +571,7 @@ def ajustar_menu_por_rol():
         
         
     elif current_user.role == 'veterinario':
-        # Veterinario: puede ver todo pero no modificar usuarios
+        
         acciones_menu.entryconfig("Registrar usuario", state="disabled")
         acciones_menu.entryconfig("Eliminar usuario", state="disabled")
         acciones_menu.entryconfig("Listar usuarios", state="normal")
@@ -593,8 +583,8 @@ def ajustar_menu_por_rol():
         acciones_menu.entryconfig("Mis citas", state="normal")
         acciones_menu.entryconfig("Eliminar mascota", state="disabled")
         
-    else:  # dueno
-        # Dueño: solo sus mascotas y citas
+    else:  
+      
         acciones_menu.entryconfig("Registrar usuario", state="disabled")
         acciones_menu.entryconfig("Eliminar usuario", state="disabled")
         acciones_menu.entryconfig("Listar usuarios", state="disabled")
@@ -650,7 +640,7 @@ frame_output.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 lbl_output = ttk.Label(frame_output, text="Sistema VetCare", font=("Segoe UI", 12, "bold"))
 lbl_output.pack(anchor="w")
 
-# Listbox con scrollbar para mostrar resultados
+
 frame_list = ttk.Frame(frame_output)
 frame_list.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
 
@@ -660,11 +650,11 @@ sb.config(command=lb_output.yview)
 sb.pack(side=tk.RIGHT, fill=tk.Y)
 lb_output.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Mensaje de ayuda inferior
+
 lbl_help = ttk.Label(frame_output, text="Iniciando sistema...", font=("Segoe UI", 9))
 lbl_help.pack(anchor="w", pady=(8, 0))
 
-# Al iniciar, pedir login
+
 root.after(100, login_inicial)
 
 root.mainloop()

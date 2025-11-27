@@ -16,7 +16,7 @@ class Cita:
         try:
             cur = conn.cursor()
             
-            # Validar que el veterinario no tenga otra cita a esa hora
+            # que el veterinario no tenga otra cita a esa hora
             cur.execute(
                 "SELECT id FROM citas WHERE idVeterinario = %s AND fecha = %s AND hora = %s AND estado != 'cancelada'",
                 (idVeterinario, fecha, hora)
