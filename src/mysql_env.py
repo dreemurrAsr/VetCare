@@ -7,13 +7,12 @@ def create_table_usuarios(conn):
             nombre VARCHAR(100) NOT NULL,
             correo VARCHAR(100) UNIQUE NOT NULL,
             password VARCHAR(255),
-            tipoUsuario ENUM('dueno', 'veterinario', 'admin') NOT NULL,
+            role ENUM('dueno', 'veterinario', 'admin') NOT NULL DEFAULT 'dueno',
             direccion VARCHAR(200),
             telefono VARCHAR(20),
             especialidad VARCHAR(100),
             anosExperiencia INT,
             horario VARCHAR(100),
-            role VARCHAR(50) DEFAULT 'dueno',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB;
     """
