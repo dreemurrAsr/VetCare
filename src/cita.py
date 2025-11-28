@@ -1,4 +1,3 @@
-# cita.py
 from db_connection import get_conn
 
 class Cita:
@@ -125,8 +124,30 @@ class Cita:
     def cancelar(self):
         return self.actualizar_estado('cancelada')
     
-    def completar(self):
-        return self.actualizar_estado('completada')
+    def completar(self, diagnostico, tratamiento, observaciones=None):
+        """Marca la cita como completada y crea registro en historial médico"""
+        conn = get_conn()
+        try:
+            cur = conn.cursor()
+            
+            # Actualizar estado de la cita
+            cur.execute("UPDATE citas SET estado = %s WHERE id = %s", ('completada', self.id))
+            
+            # Crear registro en historial médico
+            cur.execute(
+                "INSERT INTO historial_medico (idMascota, idVeterinario, fecha, diagnostico, tratamiento, observaciones) VALUES (%s, %s, CURDATE(), %s, %s, %s)",
+                (self.idMascota, self.idVeterinario, diagnostico, tratamiento, observaciones)
+            )
+            
+            conn.commit()
+            self.estado = 'completada'
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            cur.close()
+            conn.close()
     
     def __str__(self):
         return f"Cita #{self.id} - {self.fecha} {self.hora} - Estado: {self.estado}"

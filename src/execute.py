@@ -336,6 +336,8 @@ def agendar_cita():
         cita = Cita.crear(id_mascota, id_vet, fecha, hora, motivo)
         messagebox.showinfo("OK", f"Cita agendada para {fecha} a las {hora}")
         mostrar_mis_citas()
+    except ValueError as ve:
+        messagebox.showerror("Error", str(ve))
     except Exception as e:
         messagebox.showerror("Error", f"Error al agendar cita:\n{e}")
 
@@ -366,6 +368,96 @@ def mostrar_mis_citas():
             lb_output.insert(tk.END, f"  [{c.id}] {c.fecha} {c.hora} - {c.estado}")
     except Exception as e:
         messagebox.showerror("Error", f"Error al obtener citas:\n{e}")
+
+
+def completar_cita():
+    """Permite al veterinario completar una cita y registrar diagnóstico"""
+    if current_user is None or current_user.role != 'veterinario':
+        messagebox.showerror("Permisos", "Solo los veterinarios pueden completar citas.")
+        return
+    
+    from cita import Cita
+    
+    # Solicitar ID de la cita
+    id_cita = simpledialog.askinteger("Completar cita", "Ingresa el ID de la cita:")
+    if not id_cita:
+        return
+    
+    # Buscar la cita
+    cita = Cita.buscar_por_id(id_cita)
+    if not cita:
+        messagebox.showerror("Error", "Cita no encontrada.")
+        return
+    
+    # Verificar que la cita sea del veterinario actual
+    if cita.idVeterinario != current_user.id:
+        messagebox.showerror("Error", "Esta cita no está asignada a ti.")
+        return
+    
+    # Verificar que la cita esté en estado pendiente o confirmada
+    if cita.estado not in ('pendiente', 'confirmada'):
+        messagebox.showerror("Error", f"Esta cita ya está en estado: {cita.estado}")
+        return
+    
+    # Solicitar diagnóstico y tratamiento
+    diagnostico = simpledialog.askstring("Diagnóstico", "Ingresa el diagnóstico:")
+    if not diagnostico:
+        return
+    
+    tratamiento = simpledialog.askstring("Tratamiento", "Ingresa el tratamiento:")
+    if not tratamiento:
+        return
+    
+    observaciones = simpledialog.askstring("Observaciones", "Observaciones adicionales (opcional):")
+    
+    try:
+        cita.completar(diagnostico, tratamiento, observaciones)
+        messagebox.showinfo("OK", "Cita completada y registrada en historial médico.")
+        mostrar_mis_citas()
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al completar cita:\n{e}")
+
+
+def ver_historial_mascota():
+    """Permite ver el historial médico de una mascota"""
+    if current_user is None:
+        messagebox.showerror("Permisos", "Debe iniciar sesión.")
+        return
+    
+    from mascota import Mascota
+    
+    id_mascota = simpledialog.askinteger("Ver historial", "Ingresa el ID de la mascota:")
+    if not id_mascota:
+        return
+    
+    try:
+        mascota = Mascota.buscar_por_id(id_mascota)
+        if not mascota:
+            messagebox.showerror("Error", "Mascota no encontrada.")
+            return
+        
+        # Verificar permisos
+        if current_user.role == 'dueno' and mascota.idDueno != current_user.id:
+            messagebox.showerror("Permisos", "No puedes ver el historial de esta mascota.")
+            return
+        
+        historial = mascota.obtener_historial()
+        
+        lb_output.delete(0, tk.END)
+        lb_output.insert(tk.END, f"Historial Médico de {mascota.nombre}:")
+        if not historial:
+            lb_output.insert(tk.END, "  (Sin historial médico)")
+            return
+        
+        for h in historial:
+            lb_output.insert(tk.END, f"\n  Fecha: {h['fecha']}")
+            lb_output.insert(tk.END, f"  Diagnóstico: {h['diagnostico']}")
+            lb_output.insert(tk.END, f"  Tratamiento: {h['tratamiento']}")
+            if h['observaciones']:
+                lb_output.insert(tk.END, f"  Observaciones: {h['observaciones']}")
+            lb_output.insert(tk.END, "  " + "-"*50)
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al obtener historial:\n{e}")
 
 
 # --- Listados (admin y veterinario) ---
@@ -404,6 +496,38 @@ def listar_mascotas():
     except Exception as e:
         messagebox.showerror("Error", f"Error al listar mascotas:\n{e}")
 
+def eliminar_mascota():
+    """Permite al dueño o admin eliminar una mascota"""
+    if current_user is None:
+        messagebox.showerror("Permisos", "Debe iniciar sesión.")
+        return
+    
+    from mascota import Mascota
+    
+    id_mascota = simpledialog.askinteger("Eliminar mascota", "Ingresa el ID de la mascota:")
+    if not id_mascota:
+        return
+    
+    try:
+        mascota = Mascota.buscar_por_id(id_mascota)
+        if not mascota:
+            messagebox.showerror("Error", "Mascota no encontrada.")
+            return
+        
+        # Verificar permisos
+        if current_user.role == 'dueno' and mascota.idDueno != current_user.id:
+            messagebox.showerror("Permisos", "No puedes eliminar esta mascota.")
+            return
+        
+        if messagebox.askyesno("Confirmar", f"¿Eliminar a {mascota.nombre}?"):
+            Mascota.eliminar(id_mascota)
+            messagebox.showinfo("OK", "Mascota eliminada.")
+            if current_user.role == 'dueno':
+                mostrar_mis_mascotas()
+            else:
+                listar_mascotas()
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al eliminar mascota:\n{e}")
 
 def listar_citas():
     """Lista todas las citas del sistema (admin/veterinario)"""
@@ -449,10 +573,12 @@ def ajustar_menu_por_rol():
         acciones_menu.entryconfig("Listar usuarios", state="normal")
         acciones_menu.entryconfig("Listar mascotas", state="normal")
         acciones_menu.entryconfig("Listar citas", state="normal")
-        acciones_menu.entryconfig("Registrar mascota", state="normal")
+        acciones_menu.entryconfig("Registrar mascota", state="disabled")
         acciones_menu.entryconfig("Agendar cita", state="disabled")
         acciones_menu.entryconfig("Mis mascotas", state="disabled")
         acciones_menu.entryconfig("Mis citas", state="disabled")
+        acciones_menu.entryconfig("Eliminar mascota", state="normal")
+        
         
     elif current_user.role == 'veterinario':
         # Veterinario: puede ver todo pero no modificar usuarios
@@ -465,6 +591,7 @@ def ajustar_menu_por_rol():
         acciones_menu.entryconfig("Agendar cita", state="disabled")
         acciones_menu.entryconfig("Mis mascotas", state="disabled")
         acciones_menu.entryconfig("Mis citas", state="normal")
+        acciones_menu.entryconfig("Eliminar mascota", state="disabled")
         
     else:  # dueno
         # Dueño: solo sus mascotas y citas
@@ -477,6 +604,7 @@ def ajustar_menu_por_rol():
         acciones_menu.entryconfig("Agendar cita", state="normal")
         acciones_menu.entryconfig("Mis mascotas", state="normal")
         acciones_menu.entryconfig("Mis citas", state="normal")
+        acciones_menu.entryconfig("Eliminar mascota", state="normal")
 
 
 # ==================== INTERFAZ GRÁFICA ====================
@@ -493,9 +621,11 @@ menubar = tk.Menu(root)
 acciones_menu = tk.Menu(menubar, tearoff=0)
 acciones_menu.add_command(label="Registrar usuario", command=registrar_usuario)
 acciones_menu.add_command(label="Eliminar usuario", command=eliminar_usuario)
+acciones_menu.add_command(label="Eliminar mascota", command=eliminar_mascota)
 acciones_menu.add_separator()
 acciones_menu.add_command(label="Registrar mascota", command=registrar_mascota)
 acciones_menu.add_command(label="Agendar cita", command=agendar_cita)
+acciones_menu.add_command(label="Completar cita", command=completar_cita)
 acciones_menu.add_separator()
 acciones_menu.add_command(label="Listar usuarios", command=listar_usuarios)
 acciones_menu.add_command(label="Listar mascotas", command=listar_mascotas)
@@ -503,6 +633,7 @@ acciones_menu.add_command(label="Listar citas", command=listar_citas)
 acciones_menu.add_separator()
 acciones_menu.add_command(label="Mis mascotas", command=mostrar_mis_mascotas)
 acciones_menu.add_command(label="Mis citas", command=mostrar_mis_citas)
+acciones_menu.add_command(label="Ver historial médico", command=ver_historial_mascota)
 menubar.add_cascade(label="Acciones", menu=acciones_menu)
 
 # Menú "Archivo" con Salir
